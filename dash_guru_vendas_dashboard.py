@@ -162,5 +162,8 @@ def atualizar_indicadores(dia, n):
         ])
     ], md=3)
 
+
+
 if __name__ == '__main__':
-    app.run_server(debug=True)
+    app.run(debug=True)
+
