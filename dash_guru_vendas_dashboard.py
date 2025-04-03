@@ -205,8 +205,10 @@ def atualizar_indicadores(dia, n):
     ], md=3)
 
 # Executa o servidor Dash
+
 if __name__ == '__main__':
-    app.run_server(debug=True)
+    port = int(os.environ.get("PORT", 8050))  # usa 8050 localmente como padrão
+    app.run_server(debug=True, host='0.0.0.0', port=port)
 
 server = app.server
 
