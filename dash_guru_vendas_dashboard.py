@@ -207,3 +207,6 @@ def atualizar_indicadores(dia, n):
 # Executa o servidor Dash
 if __name__ == '__main__':
     app.run_server(debug=True)
+
+server = app.server
+
