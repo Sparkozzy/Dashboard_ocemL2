@@ -30,10 +30,11 @@ def carregar_dados():
     pagina1_df["data"] = pd.to_datetime(pagina1_df["data"], dayfirst=True, errors='coerce')
     return metricas_df, pagina1_df
 
-# App
+# Inicialização do aplicativo Dash
 app = Dash(__name__, external_stylesheets=[dbc.themes.DARKLY])
 app.title = "Dashboard - Escritório Milionário"
 
+# Layout principal do aplicativo
 app.layout = dbc.Container([
     dcc.Interval(id='atualiza-dados', interval=60*1000, n_intervals=0),
 
@@ -49,7 +50,38 @@ app.layout = dbc.Container([
     dbc.Row(id='indicadores-dia'),
 
     dbc.Row([
-        dbc.Col(dcc.Graph(id="funnel-fig", style={"height": "700px"}))
+        dbc.Col([
+            dcc.Graph(id="funnel-fig", style={"height": "700px"}),
+            html.Div([
+                dbc.Card([
+                    dbc.CardBody([
+                        html.H4("Compradores que Compareceram", className="text-white", style={"marginTop": "-10px"}),
+                        html.H2("561", className="text-white", style={"marginTop": "-10px"})
+                    ])
+                ], style={
+                    "height": "85px",
+                    "width": "240px",
+                    "position": "absolute",
+                    "bottom": "290px",
+                    "right": "35px",
+                    "zIndex": 10
+                }),
+                dbc.Card([
+                    dbc.CardBody([
+                        html.H4("Fechado Pós Sinal", className="text-white", style={"marginTop": "-10px"}),
+                        html.H2(id="fechado-pos-sinal", className="text-white", style={"marginTop": "-10px"}),
+                        html.Small(id="fechado-pos-sinal-pct", className="text-white")
+                    ])
+                ], style={
+                    "height": "85px",
+                    "width": "240px",
+                    "position": "absolute",
+                    "bottom": "80px",
+                    "right": "35px",
+                    "zIndex": 10
+                })
+            ])
+        ])
     ], className="mb-4"),
 
     dbc.Row([
@@ -74,6 +106,7 @@ app.layout = dbc.Container([
 
 ], fluid=True)
 
+# Callback principal que atualiza todo o dashboard
 @app.callback(
     Output('dropdown-dia', 'options'),
     Output('dropdown-dia', 'value'),
@@ -83,12 +116,14 @@ app.layout = dbc.Container([
     Output('valor-estado', 'figure'),
     Output('alunos-estado', 'figure'),
     Output('valor-tempo', 'figure'),
+    Output('fechado-pos-sinal', 'children'),
+    Output('fechado-pos-sinal-pct', 'children'),
     Input('atualiza-dados', 'n_intervals')
 )
 def atualizar_dashboard(n):
     metricas_df, pagina1_df = carregar_dados()
 
-    # Planos
+    # Cards por plano
     titanium = int(metricas_df.loc[metricas_df['Produtos'] == 'Titanium', 'Vendas'].values[0])
     iron = int(metricas_df.loc[metricas_df['Produtos'] == 'Iron', 'Vendas'].values[0])
     palladium = int(metricas_df.loc[metricas_df['Produtos'] == 'Palladium', 'Vendas'].values[0])
@@ -99,7 +134,7 @@ def atualizar_dashboard(n):
         dbc.Col(dbc.Card(dbc.CardBody([html.H5("Palladium", className="card-title text-light"), html.H2(f"{palladium}", className="card-text")]), color="#CE9334", className="text-center"), md=4)
     ])
 
-    # Funnel
+    # Funil de conversão
     ingressos = metricas_df.loc[metricas_df['Etapas'] == 'Compradores de ingresso', 'Número'].values[0]
     checkin = metricas_df.loc[metricas_df['Etapas'] == 'Check in', 'Número'].values[0]
     participacao = metricas_df.loc[metricas_df['Etapas'] == 'Compradores que Compareceram', 'Número'].values[0]
@@ -137,8 +172,15 @@ def atualizar_dashboard(n):
 
     secoes = metricas_df['Seções'].dropna().unique().tolist()
 
-    return ([{"label": s, "value": s} for s in secoes], secoes[0], cards, funnel_fig, total_convertido_fmt, bar_valor_estado, bar_alunos_estado, valor_tempo_fig)
+    # Fechado Pós Sinal - célula R2 (coluna 17, linha 0)
+    fechado_pos_sinal = metricas_df.iloc[0, 17]
+    fechado_pos_sinal_str = str(int(fechado_pos_sinal)).replace(".", "") if pd.notnull(fechado_pos_sinal) else "N/A"
 
+    pct = f"{(fechado_pos_sinal / sinais * 100):.1f}%" if sinais else "0.0%"
+
+    return ([{"label": s, "value": s} for s in secoes], secoes[0], cards, funnel_fig, total_convertido_fmt, bar_valor_estado, bar_alunos_estado, valor_tempo_fig, fechado_pos_sinal_str, pct)
+
+# Callback para atualizar indicadores por seção
 @app.callback(
     Output('indicadores-dia', 'children'),
     Input('dropdown-dia', 'value'),
@@ -162,11 +204,6 @@ def atualizar_indicadores(dia, n):
         ])
     ], md=3)
 
-
-import os
-
+# Executa o servidor Dash
 if __name__ == '__main__':
-    port = int(os.environ.get("PORT", 8050))
-    app.run_server(host="0.0.0.0", port=port, debug=True)
-
-
+    app.run_server(debug=True)
